@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-10-13T11:29:10.241001300Z">
+        <DropdownSelection timestamp="2026-10-27T04:35:28.674121500Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="Default" identifier="serial=192.168.1.21:5555;connection=95cdd8f4" />
+              <DeviceId pluginId="Wireless" identifier="serviceName=adb-BL7000NEU0012092-agDsqT" />
             </handle>
           </Target>
         </DropdownSelection>
@@ -15,10 +15,10 @@
       </SelectionState>
       <SelectionState runConfigName="androidTest">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-10-13T11:29:10.241001300Z">
+        <DropdownSelection timestamp="2026-10-27T10:21:22.292991900Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="Default" identifier="serial=192.168.1.21:5555;connection=95cdd8f4" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Ranjith R\.android\avd\Medium_Tablet_2.avd" />
             </handle>
           </Target>
         </DropdownSelection>
@@ -37,10 +37,10 @@
       </SelectionState>
       <SelectionState runConfigName="main">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-10-13T11:29:10.241001300Z">
+        <DropdownSelection timestamp="2026-10-22T09:43:51.281805Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="Default" identifier="serial=192.168.1.21:5555;connection=95cdd8f4" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Ranjith R\.android\avd\Pixel_10a.avd" />
             </handle>
           </Target>
         </DropdownSelection>

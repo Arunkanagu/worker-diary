@@ -1,6 +1,7 @@
 package dev.nura.app.thozhil.diary.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,20 +12,27 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
@@ -54,8 +62,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -65,11 +74,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.nura.app.thozhil.diary.R
+import dev.nura.app.thozhil.diary.data.NoteCounts
 import dev.nura.app.thozhil.diary.data.SiteContact
 import dev.nura.app.thozhil.diary.data.SiteNote
 import dev.nura.app.thozhil.diary.ui.SiteViewModel
 import dev.nura.app.thozhil.diary.ui.components.ClearFocusWhenClosed
 import dev.nura.app.thozhil.diary.ui.components.ConfirmDialog
+import dev.nura.app.thozhil.diary.ui.components.ContentMaxWidth
 import dev.nura.app.thozhil.diary.ui.components.EmptyState
 import dev.nura.app.thozhil.diary.ui.components.InitialsAvatar
 import dev.nura.app.thozhil.diary.ui.components.ScreenHeader
@@ -78,28 +90,34 @@ import dev.nura.app.thozhil.diary.ui.theme.ErrorRed
 import dev.nura.app.thozhil.diary.ui.theme.Ink
 import dev.nura.app.thozhil.diary.ui.theme.InkMuted
 import dev.nura.app.thozhil.diary.ui.theme.IvoryCard
+import dev.nura.app.thozhil.diary.ui.theme.Mist
 import dev.nura.app.thozhil.diary.ui.theme.SageDeep
+import dev.nura.app.thozhil.diary.ui.theme.SageInk
 import dev.nura.app.thozhil.diary.ui.theme.SandLight
 import dev.nura.app.thozhil.diary.util.dial
+import dev.nura.app.thozhil.diary.util.formatRupees
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
+import dev.nura.app.thozhil.diary.util.Language
 import java.time.format.DateTimeFormatter
 
 /** Keeps note titles short enough to read at a glance in the list. */
 private const val NOTE_TITLE_MAX = 80
 
-private val noteTimeFormat = DateTimeFormatter.ofPattern("d MMM yyyy, h:mm a")
+/** No-break spaces keep "27 Oct 2026" on one line in a card's detail line. */
+private val noteDateFormat = DateTimeFormatter.ofPattern("d MMM yyyy")
 
 @Composable
 fun SiteDetailScreen(
-    siteId: Long,
+    siteId: String,
     onBack: () -> Unit,
-    onOpenNote: (Long) -> Unit,
+    onOpenNote: (String) -> Unit,
     viewModel: SiteViewModel = hiltViewModel()
 ) {
     val item by remember(siteId) { viewModel.observe(siteId) }.collectAsStateWithLifecycle(initialValue = null)
     val notes by remember(siteId) { viewModel.observeNotes(siteId) }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val counts by remember(siteId) { viewModel.observeNoteCounts(siteId) }.collectAsStateWithLifecycle(initialValue = emptyMap())
     var sheetOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<SiteNote?>(null) }
     var deleting by remember { mutableStateOf<SiteNote?>(null) }
@@ -112,73 +130,78 @@ fun SiteDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
+            .statusBarsPadding(),
+        contentAlignment = Alignment.TopCenter
     ) {
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 96.dp),
-            modifier = Modifier.fillMaxSize()
+        Column(
+            modifier = Modifier
+                .widthIn(max = ContentMaxWidth)
+                .fillMaxSize()
         ) {
-            item {
-                ScreenHeader(
-                    title = item?.site?.name.orEmpty(),
-                    subtitle = item?.let {
-                        when (it.contacts.size) {
-                            0 -> "No contacts"
-                            1 -> "1 contact"
-                            else -> "${it.contacts.size} contacts"
-                        }
-                    },
-                    onBack = onBack,
-                    modifier = Modifier.padding(start = 8.dp, end = 20.dp)
-                )
-            }
+            ScreenHeader(
+                title = item?.site?.name.orEmpty(),
+                subtitle = item?.let {
+                    when (it.contacts.size) {
+                        0 -> stringResource(R.string.no_contacts)
+                        1 -> stringResource(R.string.one_contact)
+                        else -> stringResource(R.string.d_contacts, it.contacts.size)
+                    }
+                },
+                onBack = onBack,
+                trail = listOf(stringResource(R.string.sites)),
+                modifier = Modifier.padding(start = 8.dp, end = 20.dp)
+            )
 
-            val contacts = item?.contacts.orEmpty()
-            if (contacts.isNotEmpty()) {
-                item {
-                    SoftCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp)
-                    ) {
-                        contacts.forEachIndexed { index, contact ->
-                            if (index > 0) HorizontalDivider(color = SandLight, modifier = Modifier.padding(horizontal = 16.dp))
-                            ContactRow(contact)
+            // One column on a phone, two or three on a tablet
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(NoteCardMinWidth),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 104.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val contacts = item?.contacts.orEmpty()
+                if (contacts.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        SoftCard(modifier = Modifier.fillMaxWidth()) {
+                            contacts.forEachIndexed { index, contact ->
+                                if (index > 0) HorizontalDivider(color = SandLight, modifier = Modifier.padding(horizontal = 16.dp))
+                                ContactRow(contact)
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                Text(
-                    if (notes.isEmpty()) "Notes" else "Notes (${notes.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Ink,
-                    modifier = Modifier
-                        .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 10.dp)
-                        .semantics { heading() }
-                )
-            }
-
-            if (notes.isEmpty()) {
-                item {
-                    EmptyState(
-                        icon = Icons.AutoMirrored.Outlined.StickyNote2,
-                        title = "No notes yet",
-                        message = "Tap Add note to write down work, materials or anything to remember for this site.",
-                        modifier = Modifier.padding(top = 24.dp)
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        if (notes.isEmpty()) stringResource(R.string.notes) else stringResource(R.string.notes_d, notes.size),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Ink,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .semantics { heading() }
                     )
                 }
-            } else {
-                itemsIndexed(notes, key = { _, note -> note.id }) { index, note ->
-                    NoteRow(
-                        note = note,
-                        first = index == 0,
-                        last = index == notes.lastIndex,
-                        onOpen = { onOpenNote(note.id) },
-                        onEditTitle = { openSheet(note) },
-                        onDelete = { deleting = note }
-                    )
+
+                if (notes.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        EmptyState(
+                            icon = Icons.AutoMirrored.Outlined.StickyNote2,
+                            title = stringResource(R.string.no_notes_yet),
+                            message = stringResource(R.string.tap_add_note_description),
+                            modifier = Modifier.padding(top = 24.dp)
+                        )
+                    }
+                } else {
+                    items(notes, key = { it.id }) { note ->
+                        NoteCard(
+                            note = note,
+                            counts = counts[note.id],
+                            onOpen = { onOpenNote(note.id) },
+                            onEditTitle = { openSheet(note) },
+                            onDelete = { deleting = note }
+                        )
+                    }
                 }
             }
         }
@@ -189,12 +212,12 @@ fun SiteDetailScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp)
-                .height(56.dp)
+                .heightIn(min = 56.dp)
                 .shadow(10.dp, CircleShape)
         ) {
             Icon(Icons.Filled.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Add note", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.add_note), style = MaterialTheme.typography.labelLarge)
         }
     }
 
@@ -217,9 +240,9 @@ fun SiteDetailScreen(
 
     deleting?.let { note ->
         ConfirmDialog(
-            title = "Delete this note?",
-            message = "\"${note.title.take(60)}\" and its items will be removed. This can't be undone.",
-            confirmLabel = "Delete",
+            title = stringResource(R.string.delete_this_note_question),
+            message = stringResource(R.string.bill_delete_warning, note.title.take(60)),
+            confirmLabel = stringResource(R.string.delete),
             onConfirm = {
                 viewModel.deleteNote(note)
                 deleting = null
@@ -229,75 +252,124 @@ fun SiteDetailScreen(
     }
 }
 
+/** Cards are at least this wide, so a phone shows one column and a tablet two or three. */
+internal val NoteCardMinWidth = 320.dp
+
 /**
- * Notes sit on one continuous sheet: rows share a card, with the corners rounded only at the
- * top of the first row and the bottom of the last. Tap opens the note; long press shows options.
+ * What a note or bill holds, e.g. "3 tables · 8 items". Each part keeps its words together
+ * (no-break spaces), so a narrow card wraps at a "·" and never leaves "items" on a line alone.
+ */
+@Composable
+private fun countsLabel(counts: NoteCounts?): String {
+    fun together(text: String) = text.replace(' ', '\u00A0')
+    val noTables = stringResource(R.string.no_tables_yet)
+    val oneTable = stringResource(R.string.one_table)
+    val oneItem = stringResource(R.string.one_item)
+    return when {
+        counts == null || counts.tables == 0 -> together(noTables)
+        else -> {
+            val tablesStr = if (counts.tables == 1) oneTable else stringResource(R.string.d_tables, counts.tables)
+            val itemsStr = if (counts.items == 1) oneItem else stringResource(R.string.d_items, counts.items)
+            together(tablesStr) + "\u00A0· " + together(itemsStr)
+        }
+    }
+}
+
+/**
+ * A note or bill as a card: an icon, the title, when it was made and what it holds, and a ⋮ button
+ * for Edit title and Delete (long press opens the same menu). A bill also shows its total below.
+ * Tap opens it.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun NoteRow(
+internal fun NoteCard(
     note: SiteNote,
-    first: Boolean,
-    last: Boolean,
+    counts: NoteCounts?,
     onOpen: () -> Unit,
     onEditTitle: () -> Unit,
     onDelete: () -> Unit,
-    /** Shown at the end of the row, e.g. a bill's total. */
-    trailing: String? = null
+    modifier: Modifier = Modifier,
+    /** A bill's total, shown in a footer. */
+    total: Double? = null
 ) {
-    val noun = if (note.isBill) "bill" else "note"
+    val noun = stringResource(if (note.isBill) R.string.bill_lower else R.string.note_lower)
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
-    val corner = 24.dp
-    val shape = RoundedCornerShape(
-        topStart = if (first) corner else 0.dp,
-        topEnd = if (first) corner else 0.dp,
-        bottomStart = if (last) corner else 0.dp,
-        bottomEnd = if (last) corner else 0.dp
-    )
-    SoftCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        shape = shape,
-        highlightEdge = false
-    ) {
-        if (!first) HorizontalDivider(color = SandLight, modifier = Modifier.padding(horizontal = 16.dp))
+    val date = Instant.ofEpochMilli(note.createdAt).atZone(ZoneId.systemDefault()).format(noteDateFormat.withLocale(Language.locale))
+    SoftCard(modifier = modifier.fillMaxWidth()) {
         Box {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .combinedClickable(
                         role = Role.Button,
-                        onClickLabel = "Open $noun",
-                        onLongClickLabel = "${noun.replaceFirstChar { it.uppercase() }} options",
+                        onClickLabel = stringResource(R.string.open_s, noun),
+                        onLongClickLabel = stringResource(R.string.s_options, noun),
                         onLongClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             menuOpen = true
                         },
                         onClick = onOpen
                     )
-                    .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 4.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        note.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Ink,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        Instant.ofEpochMilli(note.createdAt).atZone(ZoneId.systemDefault()).format(noteTimeFormat),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted
-                    )
+                Row(verticalAlignment = Alignment.Top) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .size(44.dp)
+                            .background(Mist, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            if (note.isBill) Icons.AutoMirrored.Outlined.ReceiptLong else Icons.AutoMirrored.Outlined.StickyNote2,
+                            contentDescription = null,
+                            tint = SageInk,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(top = 2.dp)
+                    ) {
+                        Text(
+                            note.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Ink,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "$date · ${countsLabel(counts)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.options_for_s, note.title), tint = InkMuted)
+                    }
                 }
-                if (trailing != null) {
-                    Spacer(Modifier.width(12.dp))
-                    Text(trailing, style = MaterialTheme.typography.titleSmall, color = SageDeep)
+                if (total != null) {
+                    HorizontalDivider(color = SandLight, modifier = Modifier.padding(top = 12.dp, bottom = 10.dp, end = 12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .semantics(mergeDescendants = true) {}
+                    ) {
+                        Text(
+                            stringResource(R.string.bill_total),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = InkMuted,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(formatRupees(total), style = MaterialTheme.typography.titleLarge, color = SageDeep, maxLines = 1)
+                    }
                 }
             }
             DropdownMenu(
@@ -306,7 +378,7 @@ internal fun NoteRow(
                 containerColor = IvoryCard
             ) {
                 DropdownMenuItem(
-                    text = { Text("Edit title") },
+                    text = { Text(stringResource(R.string.edit_title)) },
                     leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                     onClick = {
                         menuOpen = false
@@ -314,7 +386,7 @@ internal fun NoteRow(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete", color = ErrorRed) },
+                    text = { Text(stringResource(R.string.delete), color = ErrorRed) },
                     leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = ErrorRed) },
                     onClick = {
                         menuOpen = false
@@ -336,12 +408,13 @@ internal fun NoteSheet(
     onDelete: () -> Unit,
     isBill: Boolean = false
 ) {
-    val noun = if (isBill) "bill" else "note"
+    val noun = stringResource(if (isBill) R.string.bill_lower else R.string.note_lower)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     var title by remember { mutableStateOf(existing?.title.orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
+    val titleRequiredError = stringResource(R.string.write_a_title_for_s, noun)
 
     // Animate the sheet away before removing it
     fun close(then: () -> Unit) {
@@ -350,7 +423,7 @@ internal fun NoteSheet(
 
     fun save() {
         val trimmed = title.trim()
-        if (trimmed.isEmpty()) error = "Write a title for the $noun" else close { onSave(trimmed) }
+        if (trimmed.isEmpty()) error = titleRequiredError else close { onSave(trimmed) }
     }
 
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -368,7 +441,7 @@ internal fun NoteSheet(
                 .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
         ) {
             Text(
-                if (existing == null) "New $noun" else "Edit $noun",
+                if (existing == null) stringResource(R.string.new_s, noun) else stringResource(R.string.edit_s, noun),
                 style = MaterialTheme.typography.titleLarge,
                 color = Ink
             )
@@ -379,7 +452,7 @@ internal fun NoteSheet(
                     title = it.take(NOTE_TITLE_MAX)
                     error = null
                 },
-                label = { Text(if (isBill) "Bill title" else "Note title") },
+                label = { Text(if (isBill) stringResource(R.string.bill_title) else stringResource(R.string.note_title)) },
                 isError = error != null,
                 supportingText = { Text(error ?: "${title.length} / $NOTE_TITLE_MAX") },
                 singleLine = true,
@@ -396,17 +469,17 @@ internal fun NoteSheet(
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (existing != null) {
-                    TextButton(onClick = { close(onDelete) }) { Text("Delete", color = ErrorRed) }
+                    TextButton(onClick = { close(onDelete) }) { Text(stringResource(R.string.delete), color = ErrorRed) }
                 }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = { close(onDismiss) }) { Text("Cancel", color = SageDeep) }
+                TextButton(onClick = { close(onDismiss) }) { Text(stringResource(R.string.cancel), color = SageDeep) }
                 Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = { save() },
                     shape = CircleShape,
-                    modifier = Modifier.height(48.dp)
+                    modifier = Modifier.heightIn(min = 48.dp)
                 ) {
-                    Text(if (existing == null) "Add $noun" else "Save")
+                    Text(if (existing == null) stringResource(R.string.add_s, noun) else stringResource(R.string.save))
                 }
             }
         }
@@ -431,14 +504,14 @@ private fun ContactRow(contact: SiteContact) {
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                contact.mobile.ifEmpty { "No mobile number" },
+                contact.mobile.ifEmpty { stringResource(R.string.no_mobile_number) },
                 style = MaterialTheme.typography.bodyMedium,
                 color = InkMuted
             )
         }
         if (contact.mobile.isNotEmpty()) {
             IconButton(onClick = { context.dial(contact.mobile) }) {
-                Icon(Icons.Outlined.Call, contentDescription = "Call ${contact.name}", tint = SageDeep)
+                Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call_s, contact.name), tint = SageDeep)
             }
         }
     }

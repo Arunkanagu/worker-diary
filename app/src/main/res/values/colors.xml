@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Calm Kit ivory, shown before Compose draws -->
-    <color name="app_background">#FFF4EFE8</color>
+    <!-- Site Diary paper, shown before Compose draws -->
+    <color name="app_background">#FFF3F5F0</color>
+    <!-- The diary cover: the system splash hands over to the animated one on the same green -->
+    <color name="diary_cover">#FF163528</color>
 </resources>

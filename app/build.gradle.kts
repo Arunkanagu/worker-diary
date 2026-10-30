@@ -29,6 +29,7 @@ android {
             }
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -36,6 +37,19 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("ThozhilDiary-v1.0-${variant.name}.apk")
+        }
+    }
+}
+
+// Room writes each database version's schema here, so upgrades can be checked against it
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

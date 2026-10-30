@@ -1,5 +1,10 @@
 package dev.nura.app.thozhil.diary.ui.components
 
+import androidx.compose.ui.res.stringResource
+import androidx.core.view.WindowCompat
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.DisposableEffect
+import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,7 +32,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import dev.nura.app.thozhil.diary.util.loadProfilePhoto
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -60,8 +70,8 @@ fun AppLogo(size: Dp, modifier: Modifier = Modifier) {
             .shadow(
                 elevation = 10.dp,
                 shape = shape,
-                ambientColor = Color(0xFF8A7A66).copy(alpha = 0.10f),
-                spotColor = Color(0xFF8A7A66).copy(alpha = 0.18f)
+                ambientColor = SheetShadow.copy(alpha = 0.12f),
+                spotColor = SheetShadow.copy(alpha = 0.22f)
             )
             .clip(shape)
     ) {
@@ -80,33 +90,36 @@ fun AppLogo(size: Dp, modifier: Modifier = Modifier) {
     }
 }
 
-/** Soft UI card: warm off-white, gentle two-tone shadow and a light top edge. */
+/** A diary sheet: white paper with a hairline rule and a short, crisp green-tinted shadow. */
 @Composable
 fun SoftCard(
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.large,
     color: Color = IvoryCard,
-    /** Light top-edge highlight; turn off on dark fills. */
+    /** Hairline rule around the sheet; turn off on dark fills. */
     highlightEdge: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
         modifier = modifier
             .shadow(
-                elevation = 16.dp,
+                elevation = 4.dp,
                 shape = shape,
-                ambientColor = Color(0xFF8A7A66).copy(alpha = 0.10f),
-                spotColor = Color(0xFF8A7A66).copy(alpha = 0.16f)
+                ambientColor = SheetShadow.copy(alpha = 0.10f),
+                spotColor = SheetShadow.copy(alpha = 0.14f)
             )
             .clip(shape)
             .background(color)
             .then(
-                if (highlightEdge) Modifier.border(BorderStroke(1.dp, Color.White.copy(alpha = 0.7f)), shape)
+                if (highlightEdge) Modifier.border(BorderStroke(1.dp, SandLight), shape)
                 else Modifier
             ),
         content = content
     )
 }
+
+/** Shadows lean green so they sit in the palette instead of greying it. */
+private val SheetShadow = Color(0xFF173A2B)
 
 /** Initials avatar with an "active" dot, like the kit's profile card. */
 @Composable
@@ -130,6 +143,39 @@ fun InitialsAvatar(name: String, size: Dp, modifier: Modifier = Modifier, showDo
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = (size.value * 0.36f).sp)
             )
         }
+        if (showDot) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(size * 0.24f)
+                    .background(Sage, CircleShape)
+                    .border(2.dp, IvoryCard, CircleShape)
+            )
+        }
+    }
+}
+
+/** The profile photo when there is one, otherwise [InitialsAvatar]. */
+@Composable
+fun ProfileAvatar(name: String, photoPath: String, size: Dp, modifier: Modifier = Modifier, showDot: Boolean = true) {
+    val photo by produceState<ImageBitmap?>(null, photoPath) {
+        value = loadProfilePhoto(photoPath)?.asImageBitmap()
+    }
+    val image = photo
+    if (image == null) {
+        InitialsAvatar(name = name, size = size, modifier = modifier, showDot = showDot)
+        return
+    }
+    Box(modifier = modifier.size(size)) {
+        Image(
+            bitmap = image,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .border(1.dp, SandLight, CircleShape)
+        )
         if (showDot) {
             Box(
                 modifier = Modifier
@@ -198,7 +244,7 @@ fun SuccessBanner(
                 Text(message, style = MaterialTheme.typography.bodyMedium, color = InkMuted)
             }
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Filled.Close, contentDescription = "Dismiss", tint = InkMuted)
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.dismiss), tint = InkMuted)
             }
         }
     }
@@ -212,4 +258,16 @@ private fun Color.compositeOver(background: Color): Color {
         blue = blue * a + background.blue * (1 - a),
         alpha = 1f
     )
+}
+
+/** While a screen shows the dark diary cover at the top, the status bar icons turn light. */
+@Composable
+fun CoverStatusBar() {
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        val window = (view.context as? Activity)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        controller?.isAppearanceLightStatusBars = false
+        onDispose { controller?.isAppearanceLightStatusBars = true }
+    }
 }

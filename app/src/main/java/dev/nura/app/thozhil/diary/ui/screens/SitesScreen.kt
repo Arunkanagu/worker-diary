@@ -1,19 +1,6 @@
 package dev.nura.app.thozhil.diary.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import dev.nura.app.thozhil.diary.ui.components.InitialsAvatar
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,15 +12,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -50,23 +42,32 @@ import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -74,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.nura.app.thozhil.diary.R
 import dev.nura.app.thozhil.diary.data.Site
 import dev.nura.app.thozhil.diary.data.SiteContact
 import dev.nura.app.thozhil.diary.data.SiteWithContacts
@@ -82,6 +84,7 @@ import dev.nura.app.thozhil.diary.ui.components.CalmSearchField
 import dev.nura.app.thozhil.diary.ui.components.ClearFocusWhenClosed
 import dev.nura.app.thozhil.diary.ui.components.ConfirmDialog
 import dev.nura.app.thozhil.diary.ui.components.EmptyState
+import dev.nura.app.thozhil.diary.ui.components.InitialsAvatar
 import dev.nura.app.thozhil.diary.ui.components.ScreenHeader
 import dev.nura.app.thozhil.diary.ui.components.SoftCard
 import dev.nura.app.thozhil.diary.ui.theme.ErrorRed
@@ -91,10 +94,11 @@ import dev.nura.app.thozhil.diary.ui.theme.IvoryCard
 import dev.nura.app.thozhil.diary.ui.theme.Mist
 import dev.nura.app.thozhil.diary.ui.theme.SageDeep
 import dev.nura.app.thozhil.diary.ui.theme.SageInk
+import kotlinx.coroutines.launch
 
 @Composable
 fun SitesScreen(
-    onOpenSite: (Long) -> Unit,
+    onOpenSite: (String) -> Unit,
     viewModel: SiteViewModel = hiltViewModel()
 ) {
     val sites by viewModel.sites.collectAsStateWithLifecycle()
@@ -121,11 +125,11 @@ fun SitesScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(
-                title = "Sites",
+                title = stringResource(R.string.sites),
                 subtitle = when (sites.size) {
-                    0 -> "Your work sites"
-                    1 -> "1 site"
-                    else -> "${sites.size} sites"
+                    0 -> stringResource(R.string.your_work_sites)
+                    1 -> stringResource(R.string.one_site)
+                    else -> stringResource(R.string.d_sites, sites.size)
                 },
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
@@ -133,13 +137,13 @@ fun SitesScreen(
             if (sites.isEmpty()) {
                 EmptyState(
                     icon = Icons.Outlined.Apartment,
-                    title = "No sites yet",
-                    message = "Add a site or building with its contact people to keep notes."
+                    title = stringResource(R.string.no_sites_yet),
+                    message = stringResource(R.string.add_site_description)
                 ) {
-                    Button(onClick = { openForm(null) }, shape = CircleShape, modifier = Modifier.height(52.dp)) {
+                    Button(onClick = { openForm(null) }, shape = CircleShape, modifier = Modifier.heightIn(min = 52.dp)) {
                         Icon(Icons.Filled.Add, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Add site")
+                        Text(stringResource(R.string.add_site))
                     }
                 }
                 return@Column
@@ -148,20 +152,23 @@ fun SitesScreen(
             CalmSearchField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = "Search site or contact",
+                placeholder = stringResource(R.string.search_site_or_contact),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
 
             if (visible.isEmpty()) {
                 EmptyState(
                     icon = Icons.Outlined.SearchOff,
-                    title = "No matches",
-                    message = "No site matches \"${query.trim()}\"."
+                    title = stringResource(R.string.no_matches),
+                    message = stringResource(R.string.no_site_matches_s, query.trim())
                 )
             } else {
-                LazyColumn(
+                // One column on a phone, two side by side on a tablet
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 340.dp),
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(visible, key = { it.site.id }) { item ->
@@ -183,12 +190,12 @@ fun SitesScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(20.dp)
-                    .height(56.dp)
+                    .heightIn(min = 56.dp)
                     .shadow(10.dp, CircleShape)
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Add site", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.add_site), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -208,9 +215,9 @@ fun SitesScreen(
 
     deleting?.let { site ->
         ConfirmDialog(
-            title = "Delete ${site.name}?",
-            message = "Its contacts and notes will also be deleted. This can't be undone.",
-            confirmLabel = "Delete",
+            title = stringResource(R.string.delete_s, site.name),
+            message = stringResource(R.string.site_contacts_notes_deleted_warning),
+            confirmLabel = stringResource(R.string.delete),
             onConfirm = {
                 viewModel.delete(site)
                 deleting = null
@@ -244,7 +251,7 @@ private fun SiteCard(
     SoftCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .clickable(role = Role.Button, onClickLabel = "Open ${item.site.name}", onClick = onOpen)
+                .clickable(role = Role.Button, onClickLabel = stringResource(R.string.open_s, item.site.name), onClick = onOpen)
                 .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -273,7 +280,7 @@ private fun SiteCard(
             }
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreHoriz, contentDescription = "Options for ${item.site.name}", tint = Ink)
+                    Icon(Icons.Filled.MoreHoriz, contentDescription = stringResource(R.string.options_for_s, item.site.name), tint = Ink)
                 }
                 DropdownMenu(
                     expanded = menuOpen,
@@ -281,7 +288,7 @@ private fun SiteCard(
                     containerColor = IvoryCard
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Edit") },
+                        text = { Text(stringResource(R.string.edit)) },
                         leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                         onClick = {
                             menuOpen = false
@@ -289,7 +296,7 @@ private fun SiteCard(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", color = ErrorRed) },
+                        text = { Text(stringResource(R.string.delete), color = ErrorRed) },
                         leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = ErrorRed) },
                         onClick = {
                             menuOpen = false
@@ -302,10 +309,11 @@ private fun SiteCard(
     }
 }
 
+@Composable
 private fun contactSummary(contacts: List<SiteContact>): String = when (contacts.size) {
-    0 -> "No contacts"
+    0 -> stringResource(R.string.no_contacts)
     1 -> contacts[0].name
-    else -> "${contacts[0].name} +${contacts.size - 1} more"
+    else -> stringResource(R.string.s_d_more, contacts[0].name, contacts.size - 1)
 }
 
 /** A contact added in the form, before the site is saved. */
@@ -333,6 +341,10 @@ private fun SiteFormSheet(
     var contactNameError by remember { mutableStateOf<String?>(null) }
     var contactMobileError by remember { mutableStateOf<String?>(null) }
 
+    val nameRequiredMsg = stringResource(R.string.please_enter_a_name)
+    val siteNameRequiredMsg = stringResource(R.string.please_enter_a_site_name)
+    val invalidMobileMsg = stringResource(R.string.enter_a_10_digit_mobile_number)
+
     // Animate the sheet away before removing it
     fun close(then: () -> Unit) {
         scope.launch { sheetState.hide() }.invokeOnCompletion { then() }
@@ -340,9 +352,9 @@ private fun SiteFormSheet(
 
     /** Validates the typed contact and moves it into the list; false when it has errors. */
     fun addTypedContact(): Boolean {
-        contactNameError = if (contactName.isBlank()) "Please enter a name" else null
+        contactNameError = if (contactName.isBlank()) nameRequiredMsg else null
         contactMobileError =
-            if (contactMobile.isNotEmpty() && contactMobile.length != 10) "Enter a 10-digit mobile number" else null
+            if (contactMobile.isNotEmpty() && contactMobile.length != 10) invalidMobileMsg else null
         if (contactNameError != null || contactMobileError != null) return false
         contacts.add(ContactDraft(contactName.trim(), contactMobile))
         contactName = ""
@@ -351,7 +363,7 @@ private fun SiteFormSheet(
     }
 
     fun save() {
-        nameError = if (name.isBlank()) "Please enter a site name" else null
+        nameError = if (name.isBlank()) siteNameRequiredMsg else null
         // A contact still in the fields is saved too, so typing it is never lost
         val typedOk = contactName.isBlank() && contactMobile.isEmpty() || addTypedContact()
         if (nameError == null && typedOk) {
@@ -379,7 +391,7 @@ private fun SiteFormSheet(
                 .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
         ) {
             Text(
-                if (existing == null) "New site" else "Edit site",
+                if (existing == null) stringResource(R.string.new_site) else stringResource(R.string.edit_site),
                 style = MaterialTheme.typography.titleLarge,
                 color = Ink
             )
@@ -390,7 +402,7 @@ private fun SiteFormSheet(
                     name = it
                     nameError = null
                 },
-                label = { Text("Site / building name") },
+                label = { Text(stringResource(R.string.site_building_name)) },
                 leadingIcon = { Icon(Icons.Outlined.Apartment, contentDescription = null) },
                 isError = nameError != null,
                 supportingText = nameError?.let { { Text(it) } },
@@ -405,7 +417,7 @@ private fun SiteFormSheet(
 
             Spacer(Modifier.height(12.dp))
             Text(
-                if (contacts.isEmpty()) "Contact members" else "Contact members (${contacts.size})",
+                if (contacts.isEmpty()) stringResource(R.string.contact_members) else stringResource(R.string.contact_members_d, contacts.size),
                 style = MaterialTheme.typography.titleSmall,
                 color = Ink,
                 modifier = Modifier.semantics { heading() }
@@ -433,7 +445,7 @@ private fun SiteFormSheet(
                     contactName = it
                     contactNameError = null
                 },
-                label = { Text("Contact name") },
+                label = { Text(stringResource(R.string.contact_name)) },
                 leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                 isError = contactNameError != null,
                 supportingText = contactNameError?.let { { Text(it) } },
@@ -451,10 +463,10 @@ private fun SiteFormSheet(
                     contactMobile = input.filter { it.isDigit() }.take(10)
                     contactMobileError = null
                 },
-                label = { Text("Mobile number") },
+                label = { Text(stringResource(R.string.mobile_number)) },
                 leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
                 isError = contactMobileError != null,
-                supportingText = { Text(contactMobileError ?: "Optional") },
+                supportingText = { Text(contactMobileError ?: stringResource(R.string.optional)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { addTypedContact() }),
@@ -467,20 +479,20 @@ private fun SiteFormSheet(
                 border = BorderStroke(1.dp, SageDeep),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .heightIn(min = 48.dp)
             ) {
                 Icon(Icons.Outlined.PersonAddAlt, contentDescription = null, tint = SageDeep)
                 Spacer(Modifier.width(8.dp))
-                Text("Add contact", color = SageDeep)
+                Text(stringResource(R.string.add_contact), color = SageDeep)
             }
 
             Spacer(Modifier.height(20.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = { close(onDismiss) }) { Text("Cancel", color = SageDeep) }
+                TextButton(onClick = { close(onDismiss) }) { Text(stringResource(R.string.cancel), color = SageDeep) }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = { save() }, shape = CircleShape, modifier = Modifier.height(48.dp)) {
-                    Text(if (existing == null) "Add site" else "Save")
+                Button(onClick = { save() }, shape = CircleShape, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if (existing == null) stringResource(R.string.add_site) else stringResource(R.string.save))
                 }
             }
         }
@@ -495,7 +507,7 @@ private fun ContactChipCard(contact: ContactDraft, onEdit: () -> Unit, onRemove:
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .background(Mist.copy(alpha = 0.6f))
-            .clickable(role = Role.Button, onClickLabel = "Change ${contact.name}", onClick = onEdit)
+            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.change_s, contact.name), onClick = onEdit)
             .padding(start = 10.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -510,13 +522,13 @@ private fun ContactChipCard(contact: ContactDraft, onEdit: () -> Unit, onRemove:
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                contact.mobile.ifEmpty { "No mobile number" },
+                contact.mobile.ifEmpty { stringResource(R.string.no_mobile_number) },
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted
             )
         }
         IconButton(onClick = onRemove) {
-            Icon(Icons.Outlined.Close, contentDescription = "Remove ${contact.name}", tint = InkMuted)
+            Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.remove_s, contact.name), tint = InkMuted)
         }
     }
 }

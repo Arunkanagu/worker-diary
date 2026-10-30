@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.nura.app.thozhil.diary.data.AppDatabase
+import kotlinx.coroutines.flow.map
+import dev.nura.app.thozhil.diary.data.AccountRepository
+import dev.nura.app.thozhil.diary.data.BillAdjustment
 import dev.nura.app.thozhil.diary.data.NoteItem
 import dev.nura.app.thozhil.diary.data.NoteTable
 import dev.nura.app.thozhil.diary.data.SiteNote
@@ -28,10 +31,15 @@ data class TableWithItems(val table: NoteTable, val items: List<NoteItem>)
 @HiltViewModel
 class NoteViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val db: AppDatabase
+    private val db: AppDatabase,
+    accounts: AccountRepository
 ) : ViewModel() {
 
-    private val noteId: Long = checkNotNull(savedStateHandle["noteId"])
+    private val noteId: String = checkNotNull(savedStateHandle["noteId"])
+
+    /** Whose name goes on the PDF as having prepared it. */
+    val preparedBy: StateFlow<String> = accounts.currentUser.map { it?.name.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     val note: StateFlow<SiteNote?> = db.siteDao().observeNote(noteId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -48,10 +56,14 @@ class NoteViewModel @Inject constructor(
         tables.map { TableWithItems(it, byTable[it.id].orEmpty()) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Advance, discount and tax entries on this bill, in the order they were added. */
+    val adjustments: StateFlow<List<BillAdjustment>> = db.billAdjustmentDao().observeForNote(noteId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun saveTable(table: NoteTable) {
         viewModelScope.launch {
             val withNote = table.copy(noteId = noteId)
-            if (withNote.id == 0L) db.noteTableDao().insert(withNote) else db.noteTableDao().update(withNote)
+            db.noteTableDao().upsert(withNote)
         }
     }
 
@@ -68,11 +80,28 @@ class NoteViewModel @Inject constructor(
     fun saveItem(item: NoteItem) {
         viewModelScope.launch {
             val withNote = item.copy(noteId = noteId)
-            if (withNote.id == 0L) db.noteItemDao().insert(withNote) else db.noteItemDao().update(withNote)
+            db.noteItemDao().upsert(withNote)
         }
     }
 
     fun deleteItem(item: NoteItem) {
         viewModelScope.launch { db.noteItemDao().delete(item.id) }
+    }
+
+    fun saveAdjustment(adjustment: BillAdjustment) {
+        viewModelScope.launch {
+            val withNote = adjustment.copy(noteId = noteId)
+            db.billAdjustmentDao().upsert(withNote)
+        }
+    }
+
+    /** Whether this bill's PDF ends with a signature line. */
+    fun setShowSignature(show: Boolean) {
+        val current = note.value ?: return
+        viewModelScope.launch { db.siteDao().updateNote(current.copy(showSignature = show)) }
+    }
+
+    fun deleteAdjustment(adjustment: BillAdjustment) {
+        viewModelScope.launch { db.billAdjustmentDao().delete(adjustment.id) }
     }
 }

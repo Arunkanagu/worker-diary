@@ -8,22 +8,29 @@ import androidx.room.PrimaryKey
 import androidx.room.Relation
 
 /** A work site or building. */
-@Entity(tableName = "sites")
+@Entity(tableName = "sites", indices = [Index("userId")])
 data class Site(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey
+    val id: String = newId(),
+    /** The account the record belongs to; the database fills it in on insert. */
+    val userId: String = "",
     val name: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = nowMillis(),
+    val updatedAt: Long = nowMillis()
 )
 
 /** A contact person (owner, engineer, supervisor…) for a site. */
-@Entity(tableName = "site_contacts", indices = [Index("siteId")])
+@Entity(tableName = "site_contacts", indices = [Index("siteId"), Index("userId")])
 data class SiteContact(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val siteId: Long = 0,
+    @PrimaryKey
+    val id: String = newId(),
+    /** The account the record belongs to; the database fills it in on insert. */
+    val userId: String = "",
+    val siteId: String = "",
     val name: String,
-    val mobile: String
+    val mobile: String,
+    val createdAt: Long = nowMillis(),
+    val updatedAt: Long = nowMillis()
 )
 
 data class SiteWithContacts(
@@ -36,19 +43,28 @@ data class SiteWithContacts(
  * A note or a bill kept against a site, newest first. Both hold tables of items; a bill's items
  * also carry a rate, so each row has an amount.
  */
-@Entity(tableName = "site_notes", indices = [Index("siteId")])
+@Entity(tableName = "site_notes", indices = [Index("siteId"), Index("userId")])
 data class SiteNote(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val siteId: Long,
+    @PrimaryKey
+    val id: String = newId(),
+    /** The account the record belongs to; the database fills it in on insert. */
+    val userId: String = "",
+    val siteId: String,
     val title: String,
-    val createdAt: Long = System.currentTimeMillis(),
+    val createdAt: Long = nowMillis(),
+    val updatedAt: Long = nowMillis(),
     @ColumnInfo(defaultValue = "0")
-    val isBill: Boolean = false
+    val isBill: Boolean = false,
+    /**
+     * Whether a bill's PDF ends with a line to sign on. New bills start without it. The column default
+     * stays 1 (bills from before the switch keep their signature); Room always writes this value.
+     */
+    @ColumnInfo(defaultValue = "1")
+    val showSignature: Boolean = false
 )
 
-/** Sum of item amounts in one bill. */
-data class NoteTotal(val noteId: Long, val total: Double?)
+/** How many tables and items a note or bill holds, for its card in a list. */
+data class NoteCounts(val noteId: String, val tables: Int, val items: Int)
 
 /** How many bills a site has and what they add up to. */
-data class SiteBillSummary(val siteId: Long, val bills: Int, val total: Double?)
+data class SiteBillSummary(val siteId: String, val bills: Int, val total: Double?)

@@ -22,16 +22,15 @@ class EmployeeViewModel @Inject constructor(
 
     fun save(employee: Employee) {
         viewModelScope.launch {
-            if (employee.id == 0L) db.employeeDao().insert(employee) else db.employeeDao().update(employee)
+            db.employeeDao().upsert(employee)
         }
     }
 
-    /** Removes the employee and all of their attendance and advance records. */
+    /** Removes the employee and all of their attendance records. */
     fun delete(employee: Employee) {
         viewModelScope.launch {
             db.withTransaction {
                 db.attendanceDao().deleteForEmployee(employee.id)
-                db.advanceDao().deleteForEmployee(employee.id)
                 db.employeeDao().delete(employee)
             }
         }
